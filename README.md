@@ -1,3 +1,3 @@
 # arduino-samples
 
-Various arduino tests
+Various arduino tests for esp32 or esp8266
