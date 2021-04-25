@@ -25,18 +25,6 @@
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-// =============================== Neopixel values ====================
-
-// Which pin on the Arduino is connected to the NeoPixels?
-// On a Trinket or Gemma we suggest changing this to 1:
-#define LED_PIN    17
-
-// How many NeoPixels are attached to the Arduino?
-#define LED_COUNT 8
-
-// Declare our NeoPixel strip object:
-Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
-
 // =============================== Audio values ====================
 
 const int maxScale = 16;
@@ -55,7 +43,7 @@ unsigned int sample;
 #define SAMPLES         1024          // Must be a power of 2
 #define SAMPLING_FREQ   40000         // Hz, must be 40000 or less due to ADC conversion time. Determines maximum frequency that can be analysed by the FFT Fmax=sampleF/2.
 #define AMPLITUDE       50          // Depending on your audio source level, you may need to alter this value. Can be used as a 'sensitivity' control.
-#define NUM_BANDS       8            // To change this, you will need to change the bunch of if statements describing the mapping from bins to bands
+#define NUM_BANDS       16            // To change this, you will need to change the bunch of if statements describing the mapping from bins to bands
 #define NOISE           500           // Used as a crude noise filter, values below this are ignored
 #define TOP             31
 
@@ -70,17 +58,13 @@ arduinoFFT FFT = arduinoFFT(vReal, vImag, SAMPLES, SAMPLING_FREQ);
 
 void setup()
 {
-  //  Serial.begin(115200);
+    Serial.begin(115200);
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
     //    Serial.println(F("SSD1306 allocation failed"));
     for (;;); // Don't proceed, loop forever
   }
-
-  strip.begin();           // INITIALIZE NeoPixel strip object (REQUIRED)
-  strip.show();            // Turn OFF all pixels ASAP
-  strip.setBrightness(200);
 
   // Clear the buffer
   display.clearDisplay();
@@ -119,15 +103,23 @@ void loop()
   for (int i = 2; i < (SAMPLES / 2); i++) {    // Don't use sample 0 and only first SAMPLES/2 are usable. Each array element represents a frequency bin and its value the amplitude.
     if (vReal[i] > NOISE) {                    // Add a crude noise filter
 
-      //8 bands, 12kHz top band
-      if (i<=3 )           bandValues[0]  += (int)vReal[i];
-      if (i>3   && i<=6  ) bandValues[1]  += (int)vReal[i];
-      if (i>6   && i<=13 ) bandValues[2]  += (int)vReal[i];
-      if (i>13  && i<=27 ) bandValues[3]  += (int)vReal[i];
-      if (i>27  && i<=55 ) bandValues[4]  += (int)vReal[i];
-      if (i>55  && i<=112) bandValues[5]  += (int)vReal[i];
-      if (i>112 && i<=229) bandValues[6]  += (int)vReal[i];
-      if (i>229          ) bandValues[7]  += (int)vReal[i];
+      //16 bands, 12kHz top band
+      if (i<=2 )           bandValues[0]  += (int)vReal[i];
+      if (i>2   && i<=3  ) bandValues[1]  += (int)vReal[i];
+      if (i>3   && i<=5  ) bandValues[2]  += (int)vReal[i];
+      if (i>5   && i<=7  ) bandValues[3]  += (int)vReal[i];
+      if (i>7   && i<=9  ) bandValues[4]  += (int)vReal[i];
+      if (i>9   && i<=13 ) bandValues[5]  += (int)vReal[i];
+      if (i>13  && i<=18 ) bandValues[6]  += (int)vReal[i];
+      if (i>18  && i<=25 ) bandValues[7]  += (int)vReal[i];
+      if (i>25  && i<=36 ) bandValues[8]  += (int)vReal[i];
+      if (i>36  && i<=50 ) bandValues[9]  += (int)vReal[i];
+      if (i>50  && i<=69 ) bandValues[10] += (int)vReal[i];
+      if (i>69  && i<=97 ) bandValues[11] += (int)vReal[i];
+      if (i>97  && i<=135) bandValues[12] += (int)vReal[i];
+      if (i>135 && i<=189) bandValues[13] += (int)vReal[i];
+      if (i>189 && i<=264) bandValues[14] += (int)vReal[i];
+      if (i>264          ) bandValues[15] += (int)vReal[i];
     }
   }
 
@@ -138,11 +130,11 @@ void loop()
     int barHeight = bandValues[band] / AMPLITUDE;
     if (barHeight > TOP) barHeight = TOP;
 
+    Serial.print(bandValues[band]);
+    Serial.print(" ");
+
     // Small amount of averaging between frames
     barHeight = ((oldBarHeights[band] * 1) + barHeight) / 2;
-
-    //    Serial.print(barHeight - oldBarHeights[band]);
-    //    Serial.print(" ");
 
     // Move peak up
     if (barHeight > peak[band]) {
@@ -161,19 +153,15 @@ void loop()
     oldBarHeights[band] = barHeight;
   }
 
-  //  Serial.println(" ");
+    Serial.println(" ");
   display.display();
-
-  strip.show();
 }
 
 void drawBand(int band, uint32_t value, uint32_t peak) {
   for (int i = 0; i < 8; i++) {
-    display.drawLine(16 * band + i, display.height() - 1, 16 * band + i, display.height() - 1 - value, SSD1306_WHITE);
+    display.drawLine(8 * band + i, display.height() - 1, 8 * band + i, display.height() - 1 - value, SSD1306_WHITE);
 
-    display.drawPixel(16 * band + i, display.height() - 1 - peak, SSD1306_WHITE);
+    display.drawPixel(8 * band + i, display.height() - 1 - peak, SSD1306_WHITE);
     //    Serial.println(peak);
   }
-
-  strip.setPixelColor(7-band, strip.Color(0, value * 8, 0));
 }
